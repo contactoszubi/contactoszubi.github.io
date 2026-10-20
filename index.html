@@ -196,8 +196,8 @@ return miss}
 function paint(){const miss=validate();const n=s=>IMP.filter(r=>r.s===s).length;
 IMP.forEach((r,i)=>{const e=$("#st"+i);if(e){e.className={ok:"ok",err:"er",dup:"du"}[r.s];e.textContent=({ok:"✔ ",err:"✖ ",dup:"⚠ "}[r.s])+r.m}});
 $("#sum").textContent=`${n("ok")} se agregarán · ${n("err")} con errores (se omiten) · ${n("dup")} duplicados (se omiten)`;
-$("#miss").innerHTML=miss.size?`<p><b>Hospitales o servicios inexistentes.</b> Marcá solo los que quieras crear (revisá que no sea un error de tipeo):</p>`+[...miss].map(([k,l])=>`<label style="color:var(--ink)"><input type="checkbox" style="display:inline;width:auto" data-k="${esc(k)}" ${ALLOW.has(k)?"checked":""}> ${esc(l)}</label>`).join(""):"";
-$("#miss").querySelectorAll("input").forEach(c=>c.onchange=()=>{c.checked?ALLOW.add(c.dataset.k):ALLOW.delete(c.dataset.k);paint()})}
+$("#miss").innerHTML=miss.size?`<p><b>Hospitales o servicios inexistentes.</b> Marcá solo los que quieras crear (revisá que no sea un error de tipeo):</p><p><button type="button" id="mall">Marcar todos</button> <button type="button" id="mnone">Desmarcar todos</button></p>`+[...miss].map(([k,l])=>`<label style="color:var(--ink)"><input type="checkbox" style="display:inline;width:auto" data-k="${esc(k)}" ${ALLOW.has(k)?"checked":""}> ${esc(l)}</label>`).join(""):"";
+$("#miss").querySelectorAll("input").forEach(c=>c.onchange=()=>{c.checked?ALLOW.add(c.dataset.k):ALLOW.delete(c.dataset.k);paint()});const ma=$("#mall");if(ma){ma.onclick=()=>{miss.forEach((_,k)=>ALLOW.add(k));paint()};$("#mnone").onclick=()=>{miss.forEach((_,k)=>ALLOW.delete(k));paint()}}}
 function importUI(){IMP=[];ALLOW=new Set;dlg.className="wide";
 dlg.innerHTML=`<h3>Importar contactos</h3><p><button id="tp">Descargar plantilla</button> <input type="file" id="fl" accept=".xlsx,.csv" style="display:inline;width:auto;border:0"></p><div id="pv"></div><div class="row"><button id="cx3">Cancelar</button><button class="pri" id="go" disabled>Importar válidos</button></div>`;
 $("#tp").onclick=downloadTpl;$("#cx3").onclick=()=>dlg.close();
