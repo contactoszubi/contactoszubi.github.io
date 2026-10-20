@@ -54,7 +54,7 @@ const app0=initializeApp({apiKey:"AIzaSyBTM7T-LxEbX7aeuuWppLj3-CF83JcNHQE",authD
 const auth=getAuth(app0),db=getFirestore(app0);
 const DEF_CARGOS=["R1","R2","R3","R4","JR","Médico Planta","Jefe de servicio"];
 const SEED=[["zubizarreta","Hospital de Agudos Dr. Abel Zubizarreta"],["durand","Hospital Durand"],["pirovano","Hospital Pirovano"],["ramos-mejia","Hospital Ramos Mejía"],["argerich","Hospital Argerich"]];
-const SVC=["Cardiología","Cirugía General","Cirugía Plástica","Coloprocto","Dermatología","Endocrinología","Fonoaudiología Deglutoria","Hematología","Hepatología","Kinesiología Motora","Kinesiología Respiratoria","Neumología","Nutrición","Psiquiatría","Traumatología"];
+const SVC=["Cardiología","Cirugía General","Cirugía Plástica","Clínica Médica","Coloprocto","Dermatología","Endocrinología","Fonoaudiología Deglutoria","Hematología","Hepatología","Kinesiología Motora","Kinesiología Respiratoria","Neumología","Nutrición","Psiquiatría","Traumatología"];
 const COLS=["hospital","servicio","tipo_contacto","titulo","nombre","cargo","telefono","email"];
 const $=s=>document.querySelector(s),dlg=$("#dlg"),app=$("#app");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -94,7 +94,7 @@ if(q.trim())return search();
 const[v,id]=location.hash.slice(2).split("/");
 if(v==="h"&&hm.has(id)){const h=hm.get(id),ss=sortS(S.filter(s=>s.hospitalId===id));
 app.innerHTML=`<p class="bc"><a href="#/">Hospitales</a></p><div class="hc" style="margin-bottom:10px">${logo(h)}<div class="t"><b>${esc(h.nombre)}</b><small>${ss.length} servicios</small></div></div>
-${admin?`<div class="ad"><button class="pri" data-a="ns" data-id="${id}">+ Nuevo servicio</button></div>`:""}
+${admin?`<div class="ad"><button class="pri" data-a="ns" data-id="${id}">+ Nuevo servicio</button><button data-a="ms" data-id="${id}">Agregar servicios ya cargados</button></div>`:""}
 <h2>Servicios</h2><div class="list">${ss.map(s=>`<div class="it"><a href="#/s/${s.id}" style="flex:1"><b>${esc(s.nombre)}</b><span class="sub">${cnt(C,"servicioId",s.id)} contactos</span></a>${adm("s",s.id)}</div>`).join("")||'<p class="empty">Este hospital todavía no tiene servicios.</p>'}</div>`;return}
 if(v==="s"&&sm.has(id)){const s=sm.get(id),h=hm.get(s.hospitalId),cs=C.filter(c=>c.servicioId===id).sort((a,b)=>cmp(a.nombre||a.email,b.nombre||b.email));
 app.innerHTML=`<p class="bc"><a href="#/">Hospitales</a> / <a href="#/h/${s.hospitalId}">${esc(h?.nombre)}</a></p><h2>${esc(s.nombre)}</h2>
@@ -117,7 +117,7 @@ window.clr=()=>$("#clr").click();
 window.onhashchange=()=>{window.scrollTo(0,0);render()};
 /* ---------- formularios ---------- */
 function form(title,fields,save,vals={}){
-const draw=()=>{dlg.className="";dlg.innerHTML=`<form><h3>${title}</h3>`+fields.filter(f=>!f.show||f.show(vals)).map(f=>`<label>${f.l}${f.type==="select"?`<select name="${f.k}">${f.o.map(o=>`<option ${o===(vals[f.k]??"")?"selected":""}>${esc(o)}</option>`).join("")}</select>`:f.type==="area"?`<textarea name="${f.k}">${esc(vals[f.k]||"")}</textarea>`:`<input name="${f.k}" value="${esc(vals[f.k]||"")}" type="${f.type||"text"}">`}</label>`).join("")+`<p id="ferr" class="err"></p><div class="row"><button type="button" id="cx">Cancelar</button><button class="pri">Guardar</button></div></form>`;
+const draw=()=>{dlg.className="";dlg.innerHTML=`<form><h3>${title}</h3>`+fields.filter(f=>!f.show||f.show(vals)).map(f=>`<label>${f.l}${f.type==="select"?`<select name="${f.k}">${f.o.map(o=>`<option ${o===(vals[f.k]??"")?"selected":""}>${esc(o)}</option>`).join("")}</select>`:f.type==="area"?`<textarea name="${f.k}">${esc(vals[f.k]||"")}</textarea>`:`<input name="${f.k}" value="${esc(vals[f.k]||"")}" type="${f.type||"text"}"${f.dl?` list="dl_${f.k}" autocomplete="off"`:""}>${f.dl?`<datalist id="dl_${f.k}">${f.dl.map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`:""}`}</label>`).join("")+`<p id="ferr" class="err"></p><div class="row"><button type="button" id="cx">Cancelar</button><button class="pri">Guardar</button></div></form>`;
 const fm=dlg.querySelector("form"),grab=()=>{for(const[k,v]of new FormData(fm))vals[k]=v.trim()};
 fm.querySelectorAll("select").forEach(s=>s.onchange=()=>{grab();draw()});$("#cx").onclick=()=>dlg.close();
 fm.onsubmit=async e=>{e.preventDefault();grab();try{const er=await save(vals);if(er){$("#ferr").textContent=er;return}dlg.close();toast("Guardado")}catch(x){$("#ferr").textContent="Error: "+x.message}}};
@@ -126,7 +126,8 @@ const newId=c=>doc(collection(db,c)).id;
 const hForm=h=>form(h?"Editar hospital":"Nuevo hospital",[{k:"nombre",l:"Nombre"},{k:"logo",l:"Ruta del logo (ej. logos/durand.png)"}],async v=>{
 if(!v.nombre)return"El nombre es obligatorio.";if(H.some(x=>x.id!==h?.id&&norm(x.nombre)===norm(v.nombre)))return"Ya existe un hospital con ese nombre.";
 await setDoc(doc(db,"hospitales",h?.id||newId("hospitales")),{nombre:v.nombre,logo:v.logo||""},{merge:true})},{...h});
-const sForm=(hid,s)=>form(s?"Editar servicio":"Nuevo servicio",[{k:"nombre",l:"Nombre del servicio"}],async v=>{
+const svcNames=hid=>{const have=new Set(S.filter(s=>s.hospitalId===hid).map(s=>norm(s.nombre)));return[...new Map(S.filter(s=>!have.has(norm(s.nombre))).map(s=>[norm(s.nombre),s.nombre])).values()].sort(cmp)};
+const sForm=(hid,s)=>form(s?"Editar servicio":"Nuevo servicio",[{k:"nombre",l:"Nombre del servicio (escribí o elegí uno ya cargado)",dl:svcNames(hid)}],async v=>{
 if(!v.nombre)return"El nombre es obligatorio.";if(S.some(x=>x.hospitalId===hid&&x.id!==s?.id&&norm(x.nombre)===norm(v.nombre)))return"Ese servicio ya existe en este hospital.";
 await setDoc(doc(db,"servicios",s?.id||newId("servicios")),{hospitalId:hid,nombre:v.nombre},{merge:true})},{...s});
 const cForm=(sid,c)=>{const s=sm.get(sid);form(c?"Editar contacto":"Nuevo contacto",[
@@ -150,11 +151,17 @@ SEED.forEach(([id,nombre])=>{if(!hm.has(id)){b.set(dr("hospitales",id),{nombre,l
 SVC.forEach(nm=>{const id="zubizarreta_"+slug(nm);if(!sm.has(id)&&!S.some(s=>s.hospitalId==="zubizarreta"&&norm(s.nombre)===norm(nm))){b.set(dr("servicios",id),{hospitalId:"zubizarreta",nombre:nm});n++}});
 if(!cargosOk){b.set(dr("config","cargos"),{lista:DEF_CARGOS});n++}
 if(!n)return toast("Los datos iniciales ya estaban cargados");await b.commit();toast(`Se crearon ${n} registros`)}
+function multiServ(hid){const names=svcNames(hid);dlg.className="";
+dlg.innerHTML=`<h3>Agregar servicios ya cargados</h3><input id="msq" type="search" placeholder="Buscar servicio" autocomplete="off"><div id="msl" style="max-height:50vh;overflow:auto;margin-top:8px">${names.map(n=>`<label style="color:var(--ink);margin:2px 0"><input type="checkbox" style="display:inline;width:auto" value="${esc(n)}"> ${esc(n)}</label>`).join("")||'<p class="empty">No hay otros servicios para agregar.</p>'}</div><div class="row"><button id="cx4">Cancelar</button><button class="pri" id="okms">Agregar seleccionados</button></div>`;
+$("#msq").oninput=e=>{const t=norm(e.target.value);dlg.querySelectorAll("#msl label").forEach(l=>l.style.display=norm(l.textContent).includes(t)?"":"none")};
+$("#cx4").onclick=()=>dlg.close();
+$("#okms").onclick=async()=>{const sel=[...dlg.querySelectorAll("#msl input:checked")].map(x=>x.value);if(!sel.length)return toast("Elegí al menos un servicio");const b=writeBatch(db);sel.forEach(n=>b.set(doc(collection(db,"servicios")),{hospitalId:hid,nombre:n}));try{await b.commit();dlg.close();toast(`Se agregaron ${sel.length} servicios`)}catch(x){toast("Error: "+x.message)}};
+dlg.showModal()}
 /* ---------- clicks ---------- */
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-a]");if(!b||!admin)return;const a=b.dataset.a,id=b.dataset.id;
 if(a==="nh")hForm();else if(a==="eh")hForm(hm.get(id));
 else if(a==="dh"&&confirm("¿Eliminar el hospital con todos sus servicios y contactos?")){await delMany([...C.filter(c=>c.hospitalId===id).map(c=>dr("contactos",c.id)),...S.filter(s=>s.hospitalId===id).map(s=>dr("servicios",s.id)),dr("hospitales",id)]);toast("Hospital eliminado")}
-else if(a==="ns")sForm(id);else if(a==="es")sForm(sm.get(id).hospitalId,sm.get(id));
+else if(a==="ns")sForm(id);else if(a==="ms")multiServ(id);else if(a==="es")sForm(sm.get(id).hospitalId,sm.get(id));
 else if(a==="ds"&&confirm("¿Eliminar el servicio con todos sus contactos?")){await delMany([...C.filter(c=>c.servicioId===id).map(c=>dr("contactos",c.id)),dr("servicios",id)]);toast("Servicio eliminado")}
 else if(a==="nc")cForm(id);else if(a==="ec"){const c=C.find(x=>x.id===id);cForm(c.servicioId,c)}
 else if(a==="dc"&&confirm("¿Eliminar este contacto?")){await delMany([dr("contactos",id)]);toast("Contacto eliminado")}
