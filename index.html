@@ -55,7 +55,7 @@ const auth=getAuth(app0),db=getFirestore(app0);
 const DEF_CARGOS=["R1","R2","R3","R4","JR","Médico Planta","Jefe de servicio"];
 const SEED=[["zubizarreta","Hospital de Agudos Dr. Abel Zubizarreta"],["durand","Hospital Durand"],["pirovano","Hospital Pirovano"],["ramos-mejia","Hospital Ramos Mejía"],["argerich","Hospital Argerich"]];
 const SVC=["Cardiología","Cirugía General","Cirugía Plástica","Coloprocto","Dermatología","Endocrinología","Fonoaudiología Deglutoria","Hematología","Hepatología","Kinesiología Motora","Kinesiología Respiratoria","Neumología","Nutrición","Psiquiatría","Traumatología"];
-const COLS=["hospital","servicio","tipo_contacto","tratamiento","nombre","cargo","telefono","email","observaciones"];
+const COLS=["hospital","servicio","tipo_contacto","titulo","nombre","cargo","telefono","email"];
 const $=s=>document.querySelector(s),dlg=$("#dlg"),app=$("#app");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>String(s??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
@@ -83,8 +83,8 @@ const adm=(a,id,extra="")=>admin?`<span class="ad">${extra}<button class="sm" da
 function card(c,showSvc){const h=hm.get(c.hospitalId),s=sm.get(c.servicioId),wa=c.tipo==="WHATSAPP";
 const href=wa?`https://wa.me/${digits(c.telefono)}`:`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}`;
 return`<article class="card ${wa?"":"gm"}"><a class="cl" href="${href}" target="_blank" rel="noopener"><div class="hn">${logo(h)}<span>${esc(h?.nombre||"Hospital")}</span></div>
-${wa?`<div class="nm">${esc(c.tratamiento)} ${esc(c.nombre)}</div><div class="cg">${esc(c.cargo)}</div>`:`<div class="em">${esc(c.email)}</div>`}
-${c.observaciones?`<div class="obs">${esc(c.observaciones)}</div>`:""}${showSvc?`<div><span class="tag">${esc(s?.nombre||"Servicio")}</span></div>`:""}
+${wa?`<div class="nm">${esc(c.titulo??c.tratamiento)} ${esc(c.nombre)}</div><div class="cg">${esc(c.cargo)}</div>`:`<div class="em">${esc(c.email)}</div>`}
+${showSvc?`<div><span class="tag">${esc(s?.nombre||"Servicio")}</span></div>`:""}
 <span class="go">${wa?"Abrir WhatsApp":"Redactar correo"}</span></a>${adm("c",c.id)}</article>`}
 const cnt=(a,k,id)=>a.filter(x=>x[k]===id).length;
 function render(){
@@ -108,7 +108,7 @@ function search(){const toks=norm(q).split(" "),dq=digits(q);
 const m=h=>toks.every(t=>h.includes(t))||(dq.length>=3&&toks.length===1&&h.includes(dq));
 const hh=sortH(H).filter(h=>m(norm(h.nombre)));
 const ss=sortS(S).filter(s=>m(norm(s.nombre+" "+(hm.get(s.hospitalId)?.nombre||""))));
-const cc=C.filter(c=>{const h=hm.get(c.hospitalId),s=sm.get(c.servicioId);return m(norm([h?.nombre,s?.nombre,c.tratamiento,c.nombre,c.cargo,c.email,c.telefono,digits(c.telefono),c.observaciones].join(" ")))}).sort((a,b)=>cmp(hm.get(a.hospitalId)?.nombre,hm.get(b.hospitalId)?.nombre)||cmp(a.nombre||a.email,b.nombre||b.email));
+const cc=C.filter(c=>{const h=hm.get(c.hospitalId),s=sm.get(c.servicioId);return m(norm([h?.nombre,s?.nombre,c.titulo??c.tratamiento,c.nombre,c.cargo,c.email,c.telefono,digits(c.telefono)].join(" ")))}).sort((a,b)=>cmp(hm.get(a.hospitalId)?.nombre,hm.get(b.hospitalId)?.nombre)||cmp(a.nombre||a.email,b.nombre||b.email));
 app.innerHTML=!(hh.length+ss.length+cc.length)?`<p class="empty">No se encontraron resultados para “${esc(q)}”.</p>`:
 `${hh.length?`<h3>Hospitales</h3><div class="grid">${hh.map(h=>`<a class="hc" href="#/h/${h.id}" onclick="clr()">${logo(h)}<div class="t"><b>${esc(h.nombre)}</b></div></a>`).join("")}</div>`:""}
 ${ss.length?`<h3>Servicios</h3><div class="list">${ss.map(s=>`<a class="it" href="#/s/${s.id}" onclick="clr()"><span><b>${esc(s.nombre)}</b><span class="sub">${esc(hm.get(s.hospitalId)?.nombre)}</span></span></a>`).join("")}</div>`:""}
@@ -131,19 +131,18 @@ if(!v.nombre)return"El nombre es obligatorio.";if(S.some(x=>x.hospitalId===hid&&
 await setDoc(doc(db,"servicios",s?.id||newId("servicios")),{hospitalId:hid,nombre:v.nombre},{merge:true})},{...s});
 const cForm=(sid,c)=>{const s=sm.get(sid);form(c?"Editar contacto":"Nuevo contacto",[
 {k:"tipo",l:"Tipo de contacto",type:"select",o:["WHATSAPP","GMAIL"]},
-{k:"tratamiento",l:"Tratamiento",type:"select",o:["Dr.","Dra."],show:v=>v.tipo==="WHATSAPP"},
+{k:"titulo",l:"Título",type:"select",o:["Dr.","Dra."],show:v=>v.tipo==="WHATSAPP"},
 {k:"nombre",l:"Nombre completo",show:v=>v.tipo==="WHATSAPP"},
 {k:"cargo",l:"Cargo",type:"select",o:["",...CARGOS],show:v=>v.tipo==="WHATSAPP"},
 {k:"telefono",l:"Teléfono (si falta el prefijo se agrega +549; ej. 1123456789)",show:v=>v.tipo==="WHATSAPP"},
-{k:"email",l:"Correo electrónico",type:"email",show:v=>v.tipo==="GMAIL"},
-{k:"observaciones",l:"Observaciones (opcional)",type:"area"}],async v=>{
-const d={hospitalId:s.hospitalId,servicioId:sid,tipo:v.tipo,observaciones:v.observaciones||""};
+{k:"email",l:"Correo electrónico",type:"email",show:v=>v.tipo==="GMAIL"}],async v=>{
+const d={hospitalId:s.hospitalId,servicioId:sid,tipo:v.tipo};
 if(v.tipo==="WHATSAPP"){if(!v.nombre||!v.cargo)return"Nombre y cargo son obligatorios.";if(!okTel(v.telefono||""))return"Teléfono inválido: código de área + número (10 dígitos) o con prefijo internacional.";
-Object.assign(d,{tratamiento:v.tratamiento||"Dr.",nombre:v.nombre,cargo:v.cargo,telefono:normTel(v.telefono),email:""})}
-else{if(!okMail(v.email||""))return"Correo inválido.";Object.assign(d,{tratamiento:"",nombre:"",cargo:"",telefono:"",email:v.email.toLowerCase()})}
+Object.assign(d,{titulo:v.titulo||"Dr.",nombre:v.nombre,cargo:v.cargo,telefono:normTel(v.telefono),email:""})}
+else{if(!okMail(v.email||""))return"Correo inválido.";Object.assign(d,{titulo:"",nombre:"",cargo:"",telefono:"",email:v.email.toLowerCase()})}
 const k=d.tipo==="WHATSAPP"?digits(d.telefono):d.email;
 if(C.some(x=>x.id!==c?.id&&x.servicioId===sid&&x.tipo===d.tipo&&(d.tipo==="WHATSAPP"?digits(x.telefono):x.email)===k))return"Ya existe este contacto en el servicio.";
-await setDoc(doc(db,"contactos",c?.id||newId("contactos")),d,{merge:true})},{tipo:"WHATSAPP",tratamiento:"Dr.",...c})};
+await setDoc(doc(db,"contactos",c?.id||newId("contactos")),d,{merge:true})},{tipo:"WHATSAPP",titulo:"Dr.",...c,...(c&&{titulo:c.titulo??c.tratamiento})})};
 async function delMany(refs){for(let i=0;i<refs.length;i+=400){const b=writeBatch(db);refs.slice(i,i+400).forEach(r=>b.delete(r));await b.commit()}}
 const dr=(c,id)=>doc(db,c,id);
 async function seed(){const b=writeBatch(db);let n=0;
@@ -166,8 +165,8 @@ $("#cx2").onclick=()=>dlg.close();$("#ac").onclick=()=>{const n=(prompt("Nombre 
 dlg.querySelectorAll("[data-i]").forEach(x=>x.onclick=()=>confirm("¿Quitar este cargo de la lista? Los contactos existentes no se modifican.")&&sv(CARGOS.filter((_,i)=>i!=x.dataset.i)));dlg.showModal()}
 /* ---------- importación ---------- */
 let IMP=[],ALLOW=new Set,VIRT=new Map;
-function downloadTpl(){const ws=XLSX.utils.aoa_to_sheet([COLS]);for(let r=2;r<=500;r++)ws["G"+r]={t:"s",v:"",z:"@"};ws["!ref"]="A1:I500";ws["!cols"]=COLS.map(()=>({wch:20}));
-const wi=XLSX.utils.aoa_to_sheet([["Una fila por contacto. Hoja: Contactos."],["tipo_contacto: WHATSAPP o GMAIL."],["WHATSAPP: tratamiento (Dr. o Dra.), nombre, cargo y telefono con prefijo internacional (ej. +5491123456789) son obligatorios."],["GMAIL: solo email; dejar nombre, tratamiento, cargo y telefono vacíos."],["hospital y servicio deben coincidir con los ya cargados (se ignoran mayúsculas y tildes)."],["Dar formato Texto a la columna telefono para conservar el signo +."]]);
+function downloadTpl(){const ws=XLSX.utils.aoa_to_sheet([COLS]);for(let r=2;r<=500;r++)ws["G"+r]={t:"s",v:"",z:"@"};ws["!ref"]="A1:H500";ws["!cols"]=COLS.map(()=>({wch:20}));
+const wi=XLSX.utils.aoa_to_sheet([["Una fila por contacto. Hoja: Contactos."],["tipo_contacto: WHATSAPP o GMAIL."],["WHATSAPP: titulo (Dr. o Dra.), nombre, cargo y telefono con prefijo internacional (ej. +5491123456789) son obligatorios."],["GMAIL: solo email; dejar nombre, titulo, cargo y telefono vacíos."],["hospital y servicio deben coincidir con los ya cargados (se ignoran mayúsculas y tildes)."],["Dar formato Texto a la columna telefono para conservar el signo +."]]);
 const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Contactos");XLSX.utils.book_append_sheet(wb,wi,"Instrucciones");XLSX.writeFile(wb,"plantilla_contactos.xlsx")}
 function validate(){const seen=new Set,miss=new Map;VIRT=new Map;
 const ex=new Set(C.map(c=>c.hospitalId+"|"+c.servicioId+"|"+c.tipo+"|"+(c.tipo==="WHATSAPP"?digits(c.telefono):c.email)));
@@ -176,7 +175,7 @@ let h=H.find(x=>norm(x.nombre)===nh);
 if(!nh)er.push("Falta hospital");else if(h)r.hid=h.id;else{const k="H|"+nh;miss.set(k,"Hospital: "+r.hospital);if(ALLOW.has(k)){r.hid="new:"+nh;VIRT.set(r.hid,{c:"hospitales",d:{nombre:r.hospital.trim(),logo:""}})}else er.push("Hospital inexistente")}
 if(!ns)er.push("Falta servicio");else if(r.hid){const s=S.find(x=>x.hospitalId===r.hid&&norm(x.nombre)===ns);if(s)r.sid=s.id;else{const k="S|"+r.hid+"|"+ns;miss.set(k,"Servicio: "+r.servicio+" ("+(h?.nombre||r.hospital)+")");if(ALLOW.has(k)||String(r.hid).startsWith("new:")&&ALLOW.has("H|"+nh)&&ALLOW.has(k)){r.sid="new:"+r.hid+"|"+ns;VIRT.set(r.sid,{c:"servicios",d:{hospitalId:r.hid,nombre:r.servicio.trim()}})}else er.push("Servicio inexistente en ese hospital")}}
 const t=norm(r.tipo_contacto).toUpperCase();r.t=t;let key;
-if(t==="WHATSAPP"){if(!normTrat(r.tratamiento))er.push("Tratamiento: Dr. o Dra.");if(!r.nombre.trim())er.push("Falta nombre");
+if(t==="WHATSAPP"){if(!normTrat(r.titulo))er.push("Título: Dr. o Dra.");if(!r.nombre.trim())er.push("Falta nombre");
 const c=CARGOS.find(x=>norm(x)===norm(r.cargo));if(!c)er.push("Cargo no registrado");else r.cg=c;
 if(!r.telefono.trim())er.push("Falta teléfono");else if(!okTel(r.telefono))er.push("Teléfono inválido");key=digits(normTel(r.telefono))}
 else if(t==="GMAIL"){if(!r.email.trim())er.push("Falta email");else if(!okMail(r.email.trim()))er.push("Email inválido");if(r.nombre.trim())er.push("El nombre debe quedar vacío en GMAIL");key=r.email.trim().toLowerCase()}
@@ -204,7 +203,7 @@ $("#go").onclick=async()=>{const ok=IMP.filter(r=>r.s==="ok");if(!ok.length||!co
 try{const map=new Map,ops=[];const need=new Set;ok.forEach(r=>{[r.hid,r.sid].forEach(i=>String(i).startsWith("new:")&&need.add(i))});
 [...need].sort((a,b)=>VIRT.get(a).c==="hospitales"?-1:1).forEach(v=>{const x=VIRT.get(v),id=newId(x.c);map.set(v,id);ops.push([x.c,id,{...x.d,hospitalId:x.d.hospitalId?map.get(x.d.hospitalId)||x.d.hospitalId:undefined}])});
 ops.forEach(o=>{if(o[2].hospitalId===undefined)delete o[2].hospitalId});
-ok.forEach(r=>{const w=r.t==="WHATSAPP";ops.push(["contactos",newId("contactos"),{hospitalId:map.get(r.hid)||r.hid,servicioId:map.get(r.sid)||r.sid,tipo:r.t,tratamiento:w?normTrat(r.tratamiento):"",nombre:w?r.nombre:"",cargo:w?r.cg:"",telefono:w?normTel(r.telefono):"",email:w?"":r.email.toLowerCase(),observaciones:r.observaciones||""}])});
+ok.forEach(r=>{const w=r.t==="WHATSAPP";ops.push(["contactos",newId("contactos"),{hospitalId:map.get(r.hid)||r.hid,servicioId:map.get(r.sid)||r.sid,tipo:r.t,titulo:w?normTrat(r.titulo):"",nombre:w?r.nombre:"",cargo:w?r.cg:"",telefono:w?normTel(r.telefono):"",email:w?"":r.email.toLowerCase()}])});
 for(let i=0;i<ops.length;i+=400){const b=writeBatch(db);ops.slice(i,i+400).forEach(([c,id,d])=>b.set(dr(c,id),d));await b.commit()}
 dlg.close();toast(`Importados ${ok.length} contactos. Omitidos: ${IMP.length-ok.length}`)}catch(x){$("#go").disabled=false;toast("Error al importar: "+x.message)}};
 dlg.showModal()}
