@@ -53,7 +53,7 @@ const ADMIN_EMAIL="contactoszubi@gmail.com";
 const app0=initializeApp({apiKey:"AIzaSyBTM7T-LxEbX7aeuuWppLj3-CF83JcNHQE",authDomain:"contactoszubi-6fb90.firebaseapp.com",projectId:"contactoszubi-6fb90",storageBucket:"contactoszubi-6fb90.firebasestorage.app",messagingSenderId:"326370266628",appId:"1:326370266628:web:91299ee5c2919f792e6f51"});
 const auth=getAuth(app0),db=getFirestore(app0);
 const DEF_CARGOS=["R1","R2","R3","R4","JR","Médico Planta","Jefe de servicio"];
-const SEED=[["zubizarreta","Hospital de Agudos Dr. Abel Zubizarreta"],["durand","Hospital Durand"],["pirovano","Hospital Pirovano"],["ramos-mejia","Hospital Ramos Mejía"],["argerich","Hospital Argerich"],["marie-curie","Hospital Oncológico Marie Curie"]];
+const SEED=[["zubizarreta","Hospital de Agudos Dr. Abel Zubizarreta"],["durand","Hospital Durand"],["pirovano","Hospital Pirovano"],["ramos-mejia","Hospital Ramos Mejía"],["argerich","Hospital Argerich"],["marie-curie","Hospital Oncológico Marie Curie"],["particular","Particular"]];
 const SVC=["Cardiología","Cirugía General","Cirugía Plástica","Clínica Médica","Coloprocto","Dermatología","Endocrinología","Fonoaudiología Deglutoria","Hematología","Hepatología","Kinesiología Motora","Kinesiología Respiratoria","Neumología","Nutrición","Psiquiatría","Traumatología"];
 const COLS=["hospital","servicio","tipo_contacto","titulo","nombre","cargo","telefono","email"];
 const $=s=>document.querySelector(s),dlg=$("#dlg"),app=$("#app");
