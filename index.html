@@ -66,7 +66,7 @@ const okMail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 const okTel=t=>/^\+?[\d\s().-]+$/.test(t)&&digits(t).length>=10&&digits(t).length<=15;
 const normTel=t=>{t=String(t).trim();let d=digits(t);if(t.startsWith("+"))return"+"+d;d=d.replace(/^0+/,"");
 if(d.startsWith("54")){if(!d.startsWith("549")&&d.length===12)d="549"+d.slice(2)}else if(d.length===10)d="549"+d;return"+"+d};
-const normTrat=t=>({"dr":"Dr.","dr.":"Dr.","dra":"Dra.","dra.":"Dra."})[norm(t)]||"";
+const normTrat=t=>({"dr":"Dr.","dr.":"Dr.","dra":"Dra.","dra.":"Dra.","lic":"Lic.","lic.":"Lic."})[norm(t)]||"";
 let H=[],S=[],C=[],CARGOS=[...DEF_CARGOS],cargosOk=false,ready=0,admin=false,q="";
 let hm=new Map,sm=new Map;
 function toast(m){const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display="none",3500)}
@@ -133,7 +133,7 @@ if(!v.nombre)return"El nombre es obligatorio.";if(S.some(x=>x.hospitalId===hid&&
 await setDoc(doc(db,"servicios",s?.id||newId("servicios")),{hospitalId:hid,nombre:v.nombre},{merge:true})},{...s});
 const cForm=(sid,c)=>{const s=sm.get(sid);form(c?"Editar contacto":"Nuevo contacto",[
 {k:"tipo",l:"Tipo de contacto",type:"select",o:["WHATSAPP","GMAIL"]},
-{k:"titulo",l:"Título",type:"select",o:["Dr.","Dra."],show:v=>v.tipo==="WHATSAPP"},
+{k:"titulo",l:"Título",type:"select",o:["Dr.","Dra.","Lic."],show:v=>v.tipo==="WHATSAPP"},
 {k:"nombre",l:"Nombre completo",show:v=>v.tipo==="WHATSAPP"},
 {k:"cargo",l:"Cargo",type:"select",o:["",...CARGOS],show:v=>v.tipo==="WHATSAPP"},
 {k:"telefono",l:"Teléfono (si falta el prefijo se agrega +549; ej. 1123456789)",show:v=>v.tipo==="WHATSAPP"},
@@ -185,7 +185,7 @@ let h=H.find(x=>norm(x.nombre)===nh);
 if(!nh)er.push("Falta hospital");else if(h)r.hid=h.id;else{const k="H|"+nh;miss.set(k,"Hospital: "+r.hospital);if(ALLOW.has(k)){r.hid="new:"+nh;VIRT.set(r.hid,{c:"hospitales",d:{nombre:r.hospital.trim(),logo:""}})}else er.push("Hospital inexistente")}
 if(!ns)er.push("Falta servicio");else if(r.hid){const s=S.find(x=>x.hospitalId===r.hid&&norm(x.nombre)===ns);if(s)r.sid=s.id;else{const k="S|"+r.hid+"|"+ns;miss.set(k,"Servicio: "+r.servicio+" ("+(h?.nombre||r.hospital)+")");if(ALLOW.has(k)||String(r.hid).startsWith("new:")&&ALLOW.has("H|"+nh)&&ALLOW.has(k)){r.sid="new:"+r.hid+"|"+ns;VIRT.set(r.sid,{c:"servicios",d:{hospitalId:r.hid,nombre:r.servicio.trim()}})}else er.push("Servicio inexistente en ese hospital")}}
 const t=norm(r.tipo_contacto).toUpperCase();r.t=t;let key;
-if(t==="WHATSAPP"){if(!normTrat(r.titulo))er.push("Título: Dr. o Dra.");if(!r.nombre.trim())er.push("Falta nombre");
+if(t==="WHATSAPP"){if(!normTrat(r.titulo))er.push("Título: Dr., Dra. o Lic.");if(!r.nombre.trim())er.push("Falta nombre");
 const c=CARGOS.find(x=>norm(x)===norm(r.cargo));if(!c)er.push("Cargo no registrado");else r.cg=c;
 if(!r.telefono.trim())er.push("Falta teléfono");else if(!okTel(r.telefono))er.push("Teléfono inválido");key=digits(normTel(r.telefono))}
 else if(t==="GMAIL"){if(!r.email.trim())er.push("Falta email");else if(!okMail(r.email.trim()))er.push("Email inválido");if(r.nombre.trim())er.push("El nombre debe quedar vacío en GMAIL");key=r.email.trim().toLowerCase()}
