@@ -53,10 +53,11 @@ const ADMIN_EMAIL="contactoszubi@gmail.com";
 const app0=initializeApp({apiKey:"AIzaSyBTM7T-LxEbX7aeuuWppLj3-CF83JcNHQE",authDomain:"contactoszubi-6fb90.firebaseapp.com",projectId:"contactoszubi-6fb90",storageBucket:"contactoszubi-6fb90.firebasestorage.app",messagingSenderId:"326370266628",appId:"1:326370266628:web:91299ee5c2919f792e6f51"});
 const auth=getAuth(app0),db=getFirestore(app0);
 const DEF_CARGOS=["R1","R2","R3","R4","JR","Médico Planta","Jefe de servicio"];
-const SEED=[["zubizarreta","Hospital de Agudos Dr. Abel Zubizarreta"],["durand","Hospital Durand"],["pirovano","Hospital Pirovano"],["ramos-mejia","Hospital Ramos Mejía"],["argerich","Hospital Argerich"]];
+const SEED=[["zubizarreta","Hospital de Agudos Dr. Abel Zubizarreta"],["durand","Hospital Durand"],["pirovano","Hospital Pirovano"],["ramos-mejia","Hospital Ramos Mejía"],["argerich","Hospital Argerich"],["marie-curie","Hospital Oncológico Marie Curie"]];
 const SVC=["Cardiología","Cirugía General","Cirugía Plástica","Clínica Médica","Coloprocto","Dermatología","Endocrinología","Fonoaudiología Deglutoria","Hematología","Hepatología","Kinesiología Motora","Kinesiología Respiratoria","Neumología","Nutrición","Psiquiatría","Traumatología"];
 const COLS=["hospital","servicio","tipo_contacto","titulo","nombre","cargo","telefono","email"];
 const $=s=>document.querySelector(s),dlg=$("#dlg"),app=$("#app");
+const cl=s=>String(s??"").replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g,"").trim();
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>String(s??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
 const cmp=(a,b)=>String(a).localeCompare(String(b),"es",{sensitivity:"base"});
@@ -118,7 +119,7 @@ window.onhashchange=()=>{window.scrollTo(0,0);render()};
 /* ---------- formularios ---------- */
 function form(title,fields,save,vals={}){
 const draw=()=>{dlg.className="";dlg.innerHTML=`<form><h3>${title}</h3>`+fields.filter(f=>!f.show||f.show(vals)).map(f=>`<label>${f.l}${f.type==="select"?`<select name="${f.k}">${f.o.map(o=>`<option ${o===(vals[f.k]??"")?"selected":""}>${esc(o)}</option>`).join("")}</select>`:f.type==="area"?`<textarea name="${f.k}">${esc(vals[f.k]||"")}</textarea>`:`<input name="${f.k}" value="${esc(vals[f.k]||"")}" type="${f.type||"text"}"${f.dl?` list="dl_${f.k}" autocomplete="off"`:""}>${f.dl?`<datalist id="dl_${f.k}">${f.dl.map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`:""}`}</label>`).join("")+`<p id="ferr" class="err"></p><div class="row"><button type="button" id="cx">Cancelar</button><button class="pri">Guardar</button></div></form>`;
-const fm=dlg.querySelector("form"),grab=()=>{for(const[k,v]of new FormData(fm))vals[k]=v.trim()};
+const fm=dlg.querySelector("form"),grab=()=>{for(const[k,v]of new FormData(fm))vals[k]=cl(v)};
 fm.querySelectorAll("select").forEach(s=>s.onchange=()=>{grab();draw()});$("#cx").onclick=()=>dlg.close();
 fm.onsubmit=async e=>{e.preventDefault();grab();try{const er=await save(vals);if(er){$("#ferr").textContent=er;return}dlg.close();toast("Guardado")}catch(x){$("#ferr").textContent="Error: "+x.message}}};
 draw();dlg.showModal()}
@@ -172,6 +173,8 @@ $("#cx2").onclick=()=>dlg.close();$("#ac").onclick=()=>{const n=(prompt("Nombre 
 dlg.querySelectorAll("[data-i]").forEach(x=>x.onclick=()=>confirm("¿Quitar este cargo de la lista? Los contactos existentes no se modifican.")&&sv(CARGOS.filter((_,i)=>i!=x.dataset.i)));dlg.showModal()}
 /* ---------- importación ---------- */
 let IMP=[],ALLOW=new Set,VIRT=new Map;
+const hRank=n=>{const h=H.find(x=>norm(x.nombre)===norm(n));return h?.principal?0:1};
+function sortImp(){IMP.sort((a,b)=>hRank(a.hospital)-hRank(b.hospital)||cmp(a.hospital,b.hospital)||cmp(a.servicio,b.servicio)||cmp(a.nombre||a.email,b.nombre||b.email))}
 function downloadTpl(){const ws=XLSX.utils.aoa_to_sheet([COLS]);for(let r=2;r<=500;r++)ws["G"+r]={t:"s",v:"",z:"@"};ws["!ref"]="A1:H500";ws["!cols"]=COLS.map(()=>({wch:20}));
 const wi=XLSX.utils.aoa_to_sheet([["Una fila por contacto. Hoja: Contactos."],["tipo_contacto: WHATSAPP o GMAIL."],["WHATSAPP: titulo (Dr. o Dra.), nombre, cargo y telefono con prefijo internacional (ej. +5491123456789) son obligatorios."],["GMAIL: solo email; dejar nombre, titulo, cargo y telefono vacíos."],["hospital y servicio deben coincidir con los ya cargados (se ignoran mayúsculas y tildes)."],["Dar formato Texto a la columna telefono para conservar el signo +."]]);
 const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Contactos");XLSX.utils.book_append_sheet(wb,wi,"Instrucciones");XLSX.writeFile(wb,"plantilla_contactos.xlsx")}
@@ -201,10 +204,10 @@ $("#tp").onclick=downloadTpl;$("#cx3").onclick=()=>dlg.close();
 $("#fl").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const wb=XLSX.read(await f.arrayBuffer(),{type:"array",raw:true});const ws=wb.Sheets.Contactos||wb.Sheets[wb.SheetNames[0]];
 const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""});const hd=rows[0].map(x=>norm(x));const miss=COLS.filter(c=>!hd.includes(c));
 if(miss.length){$("#pv").innerHTML=`<p class="err">Faltan columnas: ${miss.join(", ")}. Usá la plantilla.</p>`;return}
-IMP=rows.slice(1).filter(r=>r.some(x=>String(x).trim())).map(r=>Object.fromEntries(COLS.map(c=>[c,String(r[hd.indexOf(c)]??"").trim()])));
+IMP=rows.slice(1).map((r,i)=>[r,i+2]).filter(([r])=>r.some(x=>String(x).trim())).map(([r,n])=>({_n:n,...Object.fromEntries(COLS.map(c=>[c,cl(r[hd.indexOf(c)])]))}));sortImp();
 if(!IMP.length){$("#pv").innerHTML='<p class="err">El archivo no tiene filas.</p>';return}
-$("#pv").innerHTML=`<p id="sum"></p><div id="miss"></div><p class="sub">Podés corregir las celdas antes de importar.</p><div class="tw"><table><tr><th>#</th>${COLS.map(c=>`<th>${c}</th>`).join("")}<th>Estado</th></tr>${IMP.map((r,i)=>`<tr><td>${i+2}</td>${COLS.map(c=>`<td><input data-i="${i}" data-c="${c}" value="${esc(r[c])}"></td>`).join("")}<td id="st${i}"></td></tr>`).join("")}</table></div>`;
-$("#pv").querySelectorAll("td input").forEach(x=>x.onchange=()=>{IMP[x.dataset.i][x.dataset.c]=x.value.trim();paint();$("#go").disabled=!IMP.some(r=>r.s==="ok")});
+$("#pv").innerHTML=`<p id="sum"></p><div id="miss"></div><p class="sub">Podés corregir las celdas antes de importar.</p><div class="tw"><table><tr><th>#</th>${COLS.map(c=>`<th>${c}</th>`).join("")}<th>Estado</th></tr>${IMP.map((r,i)=>`<tr><td>${r._n}</td>${COLS.map(c=>`<td><input data-i="${i}" data-c="${c}" value="${esc(r[c])}"></td>`).join("")}<td id="st${i}"></td></tr>`).join("")}</table></div>`;
+$("#pv").querySelectorAll("td input").forEach(x=>x.onchange=()=>{IMP[x.dataset.i][x.dataset.c]=cl(x.value);paint();$("#go").disabled=!IMP.some(r=>r.s==="ok")});
 paint();$("#go").disabled=!IMP.some(r=>r.s==="ok")}catch(x){$("#pv").innerHTML=`<p class="err">No se pudo leer el archivo: ${esc(x.message)}</p>`}};
 $("#go").onclick=async()=>{const ok=IMP.filter(r=>r.s==="ok");if(!ok.length||!confirm(`¿Importar ${ok.length} contactos?`))return;$("#go").disabled=true;
 try{const map=new Map,ops=[];const need=new Set;ok.forEach(r=>{[r.hid,r.sid].forEach(i=>String(i).startsWith("new:")&&need.add(i))});
